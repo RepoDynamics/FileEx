@@ -18,5 +18,5 @@ namespaces = true
 #
 [project]
 version = "0.0.0.dev0"
-name = "Filex"
+name = "FileEx"
 requires-python = ">=3.10"
