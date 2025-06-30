@@ -1,6 +1,9 @@
 from pathlib import Path
 import shutil
 import os
+from contextlib import contextmanager
+import tempfile
+from typing import Iterator
 
 from fileex import exception
 
@@ -125,3 +128,79 @@ def merge(
             moved_paths.append(dest_item)
     source.rmdir()
     return moved_paths
+
+
+@contextmanager
+def get_or_make(
+    path: str | Path | None = None,
+    ensure_empty: bool = False,
+    suffix: str | None = None,
+    prefix: str | None = None,
+    dir: str | Path | None = None,
+    ignore_cleanup_errors: bool = False,
+    delete: bool = True
+) -> Iterator[Path]:
+    """Provide a directory for I/O operations.
+
+    This context manager yields a `pathlib.Path` object
+    pointing to an existing directory:
+    - If `path` is provided, ensures the directory exists
+      (creating it if necessary) and yields it.
+    - If `path` is None, creates a temporary directory,
+      yields it, and optionally removes it on exit.
+
+    Parameters
+    ----------
+    path
+        Filesystem path to use. If None, a temporary directory is created.
+    ensure_empty
+        If True, ensures that the directory is empty before yielding,
+        raising an error if it is not.
+    suffix
+        Suffix for the temporary directory, if created.
+    prefix
+        Prefix for the temporary directory, if created.
+    dir
+        Directory in which to create the temporary directory, if created.
+    ignore_cleanup_errors
+        If True, ignore errors during cleanup of the temporary directory.
+    delete
+        If True, the temporary directory will be deleted on exit.
+
+    Yields
+    ------
+    work_dir
+        The directory to perform file operations in.
+
+    Examples
+    --------
+    >>> with get_or_make('/tmp/data') as work_dir:
+    ...     (work_dir / 'file.txt').write_text('hello')
+    >>> with get_or_make() as work_dir:
+    ...     # work_dir is a fresh temp dir, auto-cleaned
+    ...     (work_dir / 'temp.txt').write_text('world')
+    """
+    if path:
+        outdir = Path(path).resolve()
+        if outdir.exists():
+            if not outdir.is_dir():
+                raise ValueError(
+                    f"The specified output path '{outdir}' is not a directory."
+                )
+            if ensure_empty and any(outdir.iterdir()):
+                raise ValueError(
+                    f"The specified output directory '{outdir}' is not empty."
+                )
+        else:
+            outdir.mkdir(parents=True, exist_ok=True)
+        yield outdir
+    else:
+        with tempfile.TemporaryDirectory(
+            suffix=suffix,
+            prefix=prefix,
+            dir=dir,
+            ignore_cleanup_errors=ignore_cleanup_errors,
+            delete=delete,
+        ) as tmpdir:
+            yield Path(tmpdir)
+    return
