@@ -1,10 +1,11 @@
 """FileEx"""
 
-from fileex import exception, directory, search, path
+from fileex import directory, exception, file, path, search
 
 __all__ = [
-    "exception",
     "directory",
-    "search",
+    "exception",
+    "file",
     "path",
+    "search",
 ]
