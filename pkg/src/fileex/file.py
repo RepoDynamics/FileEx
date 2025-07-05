@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import IO
 import io
 
-from fileex.file import is_path
+import fileex
 
 
 def open_file(
@@ -44,7 +44,7 @@ def open_file(
     when done to release resources.
     """
     if isinstance(source, str):
-        if is_path(source):
+        if fileex.file.is_path(source):
             return Path(source).open(mode=mode, encoding=encoding)
         return io.StringIO(source)
     if isinstance(source, bytes):
