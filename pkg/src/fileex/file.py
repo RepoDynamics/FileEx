@@ -44,7 +44,7 @@ def open_file(
     when done to release resources.
     """
     if isinstance(source, str):
-        if fileex.file.is_path(source):
+        if fileex.path.is_path(source):
             return Path(source).open(mode=mode, encoding=encoding)
         return io.StringIO(source)
     if isinstance(source, bytes):
