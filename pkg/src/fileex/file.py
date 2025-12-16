@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import IO
+from typing import IO, Literal, Type
 import io
 
 import fileex
+from fileex.typing import FileLike
 
 
 def open_file(
@@ -54,3 +55,47 @@ def open_file(
     raise TypeError(
         f"Expected str, bytes, or pathlib.Path, got {type(source).__name__}"
     )
+
+
+def content(
+    file: FileLike,
+    *,
+    output: Literal["str", "bytes"] = "str",
+    encoding: str = "utf-8"
+) -> str | bytes:
+    """Get the content of a file-like input.
+
+    Parameters
+    ----------
+    file
+        File-like input to get content from.
+    output
+        Output type, either 'str' or 'bytes'.
+    encoding
+        Encoding used to decode the file if it is provided as bytes or Path,
+        and output is 'str'.
+
+    Returns
+    -------
+    file_content
+        Content of the file as a string or bytes.
+    """
+    if output not in ("str", "bytes"):
+        raise ValueError("output must be either 'str' or 'bytes'")
+
+    if isinstance(file, str):
+        content_bytes = (
+            Path(file).read_bytes()
+            if fileex.path.is_path(file) else
+            file.encode(encoding)
+        )
+    elif isinstance(file, bytes):
+        content_bytes = file
+    elif isinstance(file, Path):
+        content_bytes = file.read_bytes()
+    else:
+        raise TypeError(
+            f"Expected str, bytes, or pathlib.Path, got {type(file).__name__}"
+        )
+
+    return content_bytes.decode(encoding) if output == "str" else content_bytes
