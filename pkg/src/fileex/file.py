@@ -1,9 +1,10 @@
 from pathlib import Path
-from typing import IO, Literal, Type
+from typing import IO, Literal, overload
 import io
+import os
 
 import fileex
-from fileex.typing import FileLike
+from fileex.typing import FileLike, ReadableFileLike
 
 
 def open_file(
@@ -57,11 +58,33 @@ def open_file(
     )
 
 
+@overload
+def content(
+    file: FileLike,
+    *,
+    output: Literal["str"] = "str",
+    encoding: str = "utf-8",
+    errors: str = "strict",
+    preserve_pos: bool = True,
+) -> str: ...
+
+@overload
+def content(
+    file: FileLike,
+    *,
+    output: Literal["bytes"],
+    encoding: str = "utf-8",
+    errors: str = "strict",
+    preserve_pos: bool = True,
+) -> bytes: ...
+
 def content(
     file: FileLike,
     *,
     output: Literal["str", "bytes"] = "str",
-    encoding: str = "utf-8"
+    encoding: str = "utf-8",
+    errors: str = "strict",
+    preserve_pos: bool = True,
 ) -> str | bytes:
     """Get the content of a file-like input.
 
@@ -72,30 +95,78 @@ def content(
     output
         Output type, either 'str' or 'bytes'.
     encoding
-        Encoding used to decode the file if it is provided as bytes or Path,
-        and output is 'str'.
+        Encoding used when converting between bytes and str.
+    errors
+        Error handling for encode/decode (e.g. 'strict', 'replace', 'ignore').
+    preserve_pos
+        If True and the object is seekable, restores the stream position after reading.
 
     Returns
     -------
     file_content
         Content of the file as a string or bytes.
+
+    Raises
+    -------
+    ValueError
+        If `output` is not 'str' or 'bytes'.
+    TypeError
+        If `file` is not a supported type.
     """
+    def return_from_bytes(b: bytes) -> str | bytes:
+        """Helper to return bytes or decoded str based on output parameter."""
+        return b.decode(encoding, errors=errors) if output == "str" else b
+
+    def return_from_str(s: str) -> str | bytes:
+        """Helper to return str or encoded bytes based on output parameter."""
+        return s if output == "str" else s.encode(encoding, errors=errors)
+
     if output not in ("str", "bytes"):
         raise ValueError("output must be either 'str' or 'bytes'")
 
+    # Path: normalize to bytes via filesystem read
+    if isinstance(file, os.PathLike):
+        return return_from_bytes(Path(file).read_bytes())
+
+    # String: check if path or content
     if isinstance(file, str):
-        content_bytes = (
-            Path(file).read_bytes()
-            if fileex.path.is_path(file) else
-            file.encode(encoding)
-        )
-    elif isinstance(file, bytes):
-        content_bytes = file
-    elif isinstance(file, Path):
-        content_bytes = file.read_bytes()
-    else:
+        if fileex.path.is_path(file):
+            return return_from_bytes(Path(file).read_bytes())
+        return return_from_str(file)
+
+    # Bytes-like: normalize to bytes
+    if isinstance(file, (bytes, bytearray, memoryview)):
+        return return_from_bytes(bytes(file))
+
+    # Streams / file objects (open(...), BytesIO, sockets, etc.)
+    if isinstance(file, ReadableFileLike):
+        # Try to preserve cursor position if possible.
+        pos: int | None = None
+        if preserve_pos:
+            try:
+                pos = file.tell()  # type: ignore[attr-defined]
+            except Exception:
+                pos = None
+
+        try:
+            raw = file.read()
+        finally:
+            if preserve_pos and pos is not None:
+                try:
+                    file.seek(pos)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+
+        if isinstance(raw, str):
+            return return_from_str(raw)
+        if isinstance(raw, (bytes, bytearray, memoryview)):
+            return return_from_bytes(bytes(raw))
+
         raise TypeError(
-            f"Expected str, bytes, or pathlib.Path, got {type(file).__name__}"
+            f"file.read() must return str or bytes, got {type(raw).__name__}"
         )
 
-    return content_bytes.decode(encoding) if output == "str" else content_bytes
+    raise TypeError(
+        "Expected str, bytes-like, path-like, or a readable stream; "
+        f"got {type(file).__name__}"
+    )

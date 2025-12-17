@@ -3,19 +3,30 @@
 This module defines type-hints used throughout the package.
 """
 
-from pathlib import Path
-from typing import TypeAlias
+import os
+from typing import TypeAlias, Protocol, runtime_checkable
 
 
-PathLike: TypeAlias = Path | str
-"""A file path, either as a string or a `pathlib.Path` object."""
+@runtime_checkable
+class ReadableFileLike(Protocol):
+    """Protocol for file-like objects that can be read from."""
+    def read(self, size: int = -1) -> str | bytes: ...
 
 
-FileLike: TypeAlias = PathLike | str | bytes
+PathLike: TypeAlias = os.PathLike | str
+"""A file path, either as a string or any `os.PathLike` object."""
+
+
+BytesLike: TypeAlias = bytes | bytearray | memoryview
+"""A bytes-like object."""
+
+
+FileLike: TypeAlias = ReadableFileLike | PathLike | str | BytesLike
 """A file-like input.
 
-- If a `pathlib.Path` is provided, it is interpreted as the path to a file.
-- If `bytes` are provided, they are interpreted as the content of the file.
-- If a `str` is provided, it is interpreted as the content of the file
+- If an `os.PathLike` object is provided, it is interpreted as the path to a file.
+- If a string is provided, it is interpreted as the content of the file
   unless it is a valid existing file path, in which case it is treated as the path to a file.
+- If a bytes-like object is provided, it is interpreted as the content of the file.
+- If a `ReadableFileLike` object is provided, its `read()` method will be used to read content.
 """
