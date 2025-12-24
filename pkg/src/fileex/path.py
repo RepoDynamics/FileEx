@@ -18,7 +18,7 @@ def is_path(path: Any) -> bool:
     if not isinstance(path, str):
         return False
     try:
-        return Path(path).resolve().exists()
+        return Path(path).exists()
     except OSError:
         # If the path cannot be resolved, it is not a valid path (e.g., too long)
         return False
