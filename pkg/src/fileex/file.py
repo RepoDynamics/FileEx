@@ -62,6 +62,7 @@ def open_file(
 def content(
     file: FileLike,
     *,
+    path_can_be_str: bool,
     output: Literal["str"] = "str",
     encoding: str = "utf-8",
     errors: str = "strict",
@@ -72,6 +73,7 @@ def content(
 def content(
     file: FileLike,
     *,
+    path_can_be_str: bool,
     output: Literal["bytes"],
     encoding: str = "utf-8",
     errors: str = "strict",
@@ -81,6 +83,7 @@ def content(
 def content(
     file: FileLike,
     *,
+    path_can_be_str: bool = True,
     output: Literal["str", "bytes"] = "str",
     encoding: str = "utf-8",
     errors: str = "strict",
@@ -92,6 +95,18 @@ def content(
     ----------
     file
         File-like input to get content from.
+        - If an `os.PathLike` object is provided, it is interpreted as the path to the file.
+        - If a string is provided and `path_can_be_str` is True, it is interpreted
+          as the content of the file unless it is a valid existing file path,
+          in which case it is treated as the path to the file.
+        - If a string is provided and `path_can_be_str` is False,
+          it is always treated as the content of the file.
+        - If a bytes-like object is provided, it is interpreted as the content of the file.
+        - If an object with a `read()` method is provided, it is treated as a file-like object.
+    path_can_be_str
+        If True, strings are checked to see if they are valid existing file paths.
+        If so, they are treated as file paths; otherwise, as file content.
+        If False, strings are always treated as file content.
     output
         Output type, either 'str' or 'bytes'.
     encoding
@@ -130,7 +145,7 @@ def content(
 
     # String: check if path or content
     if isinstance(file, str):
-        if fileex.path.is_path(file):
+        if path_can_be_str and fileex.path.is_path(file):
             return return_from_bytes(Path(file).read_bytes())
         return return_from_str(file)
 
