@@ -62,7 +62,7 @@ def open_file(
 def content(
     file: FileLike,
     *,
-    path_can_be_str: bool,
+    path_can_be_str: bool = True,
     output: Literal["str"] = "str",
     encoding: str = "utf-8",
     errors: str = "strict",
@@ -73,7 +73,7 @@ def content(
 def content(
     file: FileLike,
     *,
-    path_can_be_str: bool,
+    path_can_be_str: bool = True,
     output: Literal["bytes"],
     encoding: str = "utf-8",
     errors: str = "strict",
