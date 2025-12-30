@@ -146,7 +146,9 @@ def content(
     # String: check if path or content
     if isinstance(file, str):
         if path_can_be_str and fileex.path.is_path(file):
-            return return_from_bytes(Path(file).read_bytes())
+            filepath = Path(file)
+            if filepath.is_file():
+                return return_from_bytes(filepath.read_bytes())
         return return_from_str(file)
 
     # Bytes-like: normalize to bytes
